@@ -1,0 +1,34 @@
+# Operator state — never commit
+.env
+.env.*.local
+.claude/
+
+# Runtime / generated
+data/
+certs/
+backups/
+releases/
+archive/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Frontend
+node_modules/
+dist/
+*.local
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
