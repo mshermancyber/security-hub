@@ -1,0 +1,12 @@
+**/__pycache__
+**/.venv
+**/node_modules
+**/dist
+**/data
+*.sqlite*
+*.log
+.git
+.github
+.idea
+.vscode
+.env
