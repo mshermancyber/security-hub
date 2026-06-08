@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- CSP for dev mode (Vite). Production CSP is set in nginx.conf and is stricter.
+         Vite 3+ does not require 'unsafe-eval', so it's removed here.
+         img-src is locked to self + data: plus the github avatars host (used for the browser-tab favicon). -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://avatars.githubusercontent.com; connect-src 'self' ws: wss:; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <!-- Browser-tab favicon (GitHub avatar). -->
+    <link rel="icon" type="image/png" href="https://avatars.githubusercontent.com/u/48896836?v=7" />
+    <link rel="shortcut icon" type="image/png" href="https://avatars.githubusercontent.com/u/48896836?v=7" />
+    <link rel="apple-touch-icon" href="https://avatars.githubusercontent.com/u/48896836?v=7" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>SecurityHub Terminal</title>
+  </head>
+  <body class="bg-ink-950 text-amber font-mono antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

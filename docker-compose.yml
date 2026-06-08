@@ -1,0 +1,117 @@
+# SecurityHub Terminal — single-host docker-compose.
+#
+# Two containers, no host venv, no shared infrastructure with any other
+# deployment.
+#   • backend  — FastAPI/uvicorn on internal port 8080 (not exposed
+#                outside the compose network; reachable only via the
+#                frontend's nginx /api/ proxy).
+#   • frontend — nginx + the built React SPA, plus a TLS auto-self-
+#                signing entrypoint. Exposes the user-facing ports.
+#
+# Two bind mounts (preferred over named volumes for visibility / backup):
+#   • ./data   → /app/data        (the SQLite DB + WAL files)
+#   • ./certs  → /etc/nginx/certs (cert/key; auto-generated on first boot)
+#
+# All ports + secrets come from .env (see .env.example). Default URLs:
+#   http://<host>    (auto-redirects to HTTPS)
+#   https://<host>
+#
+# Common ops:
+#   ./scripts/up.sh        — build + start
+#   ./scripts/down.sh      — stop
+#   ./scripts/logs.sh      — tail combined logs
+#   ./scripts/backup.sh    — snapshot ./data + ./backend/app/taxonomy
+
+services:
+  backend:
+    build: ./backend
+    image: sechub-backend:latest
+    container_name: sechub-backend
+    restart: unless-stopped
+
+    # Run as the host operator's UID so writes into the bind-mounted
+    # ./data and ./backend/app/taxonomy land as files the operator can
+    # `sqlite3` / `vim` directly without chown'ing through root. The
+    # Dockerfile pre-creates uid 10001 as a fallback, but here we
+    # override with the host's UID (set in .env as SECHUB_UID/_GID,
+    # default 1001 matches a typical Linux host). On macOS / Docker
+    # Desktop with osxfs the override is unnecessary — set both to 0.
+    user: "${SECHUB_UID:-1000}:${SECHUB_GID:-1000}"
+
+    # Drop all Linux capabilities and forbid privilege escalation. The
+    # backend never needs raw sockets or chowning files. read_only:true
+    # makes the rootfs immutable; the writable data + taxonomy + /tmp
+    # are explicit mounts/tmpfs below.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+
+    environment:
+      SECHUB_DB: /app/data/sechub.sqlite
+      # Optional API keys — features degrade gracefully if absent.
+      NVD_API_KEY:           ${NVD_API_KEY:-}
+      SHODAN_API_KEY:        ${SHODAN_API_KEY:-}
+      VIRUSTOTAL_API_KEY:    ${VIRUSTOTAL_API_KEY:-}
+      HIBP_API_KEY:          ${HIBP_API_KEY:-}
+      # LLM (Ollama / OpenAI-compat).
+      SECHUB_LLM_BASE_URL:   ${SECHUB_LLM_BASE_URL:-}
+      SECHUB_LLM_API_KEY:    ${SECHUB_LLM_API_KEY:-}
+      SECHUB_LLM_MODEL:      ${SECHUB_LLM_MODEL:-}
+      # Outbound sinks.
+      SLACK_WEBHOOK_URL:     ${SLACK_WEBHOOK_URL:-}
+      TEAMS_WEBHOOK_URL:     ${TEAMS_WEBHOOK_URL:-}
+      SECHUB_SMTP_URL:       ${SECHUB_SMTP_URL:-}
+      SECHUB_FROM_EMAIL:     ${SECHUB_FROM_EMAIL:-}
+      SECHUB_SYSLOG_URL:     ${SECHUB_SYSLOG_URL:-}
+      # Auth — set this for any non-localhost deployment, or set
+      # SECHUB_INSECURE=1 to acknowledge an intentionally open API.
+      SECHUB_AUTH_TOKEN:     ${SECHUB_AUTH_TOKEN:-}
+      SECHUB_INSECURE:       ${SECHUB_INSECURE:-1}
+
+    volumes:
+      # Host-visible bind mount for SQLite. Easy to back up via
+      # scripts/backup.sh, easy to `sqlite3 ./data/sechub.sqlite` from
+      # the host for debugging.
+      - ./data:/app/data
+      # Taxonomy needs write access for /api/orgs-admin/* edits. Bound
+      # in so taxonomy changes survive container rebuilds.
+      - ./backend/app/taxonomy:/app/app/taxonomy
+
+  frontend:
+    build: ./frontend
+    image: sechub-frontend:latest
+    container_name: sechub-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Nginx in the official image runs as root then drops to `nginx`.
+    # NET_BIND_SERVICE is needed to bind 80/443 inside the container.
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - SETUID
+      - SETGID
+
+    ports:
+      # External user-facing ports. Defaults preserve the existing URLs;
+      # change SECHUB_HTTP_PORT / SECHUB_HTTPS_PORT in .env to remap.
+      - "${SECHUB_HTTP_PORT:-80}:80"
+      - "${SECHUB_HTTPS_PORT:-443}:443"
+
+    volumes:
+      # First boot: docker-entrypoint generates a self-signed cert here.
+      # Drop your own cert.pem + key.pem in ./certs/ to override.
+      - ./certs:/etc/nginx/certs
+
+# No named volumes — we want everything bind-mounted into ./data and
+# ./certs for operator visibility, backup, and zero docker-managed state.
