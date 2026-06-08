@@ -1,0 +1,17 @@
+[project]
+name = "security-hub-backend"
+version = "1.0.0"
+description = "Bloomberg-Terminal-style operator console for cybersecurity intelligence"
+readme = "../README.md"
+requires-python = ">=3.10"
+license = { text = "AGPL-3.0-or-later" }
+authors = [{ name = "SecurityHub Terminal contributors" }]
+classifiers = [
+  "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Security",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/security-hub"
+Issues = "https://github.com/your-org/security-hub/issues"
